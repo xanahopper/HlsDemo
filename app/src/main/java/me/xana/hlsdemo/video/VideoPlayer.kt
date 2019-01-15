@@ -23,12 +23,25 @@ import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 class VideoPlayer(context: Context) : BandwidthMeter.EventListener {
     private val rendererFactory = DefaultRenderersFactory(context.applicationContext)
     private val eventHandler = Handler(Looper.getMainLooper())
-    private val bandwidthMeter = DefaultBandwidthMeter.Builder().setEventListener(eventHandler, this).build()
-    private val trackSelector = DefaultTrackSelector(bandwidthMeter)
+    val bandwidthMeter = DefaultBandwidthMeter.Builder().setEventListener(eventHandler, this).build()
+    val selectionFactory = KeepTrackSelection.Factory(bandwidthMeter)
+    val trackSelector = DefaultTrackSelector(selectionFactory)
     private val dataSourceFactory = DefaultDataSourceFactory(context.applicationContext, "Xana", bandwidthMeter)
     private val mediaSourceFactory = HlsMediaSource.Factory(dataSourceFactory)
+    private val loadControl = DefaultLoadControl.Builder()
+        .setBufferDurationsMs(5000, 10000, 1500, 3000)
+        .createDefaultLoadControl()
 
-    private val player = ExoPlayerFactory.newSimpleInstance(rendererFactory, trackSelector, DefaultLoadControl())
+    val player = ExoPlayerFactory.newSimpleInstance(rendererFactory, trackSelector, loadControl)
+
+    val currentPosition: Long
+        get() = player.currentPosition
+
+    val totalLength: Long
+        get() = player.duration
+
+    val currentBufferedPercentage: Float
+        get() = player.bufferedPercentage.toFloat() / 100f
 
     fun play(uri: String, videoView: TextureView) {
         player.setVideoTextureView(videoView)
